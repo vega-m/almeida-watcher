@@ -1,0 +1,48 @@
+name: watch
+
+on:
+  schedule:
+    # Start a shift every 3h; jobs hand over via the concurrency group so
+    # coverage is continuous (each shift runs ~5h20m, next run waits its turn).
+    - cron: "11 */3 * * *"
+  workflow_dispatch:
+    inputs:
+      test_notify:
+        description: "Send a test Telegram message instead of watching"
+        type: boolean
+        default: false
+
+permissions:
+  actions: write # needed to disable this workflow after tickets are found
+  contents: read
+
+concurrency:
+  group: almeida-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Watch for returns (~5h20m shift, one check per minute)
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ inputs.test_notify }}" = "true" ]; then
+            python3 watcher.py --test-notify
+            exit 0
+          fi
+          for i in $(seq 1 320); do
+            echo "--- check $i/320 ---"
+            if python3 watcher.py; then
+              echo "Tickets found and notification sent — disabling workflow."
+              gh workflow disable watch.yml || true
+              exit 0
+            fi
+            sleep 60
+          done
