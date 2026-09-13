@@ -34,6 +34,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if [ "${{ inputs.test_notify }}" = "true" ]; then
+            [ -n "$TELEGRAM_BOT_TOKEN" ] && echo "TELEGRAM_BOT_TOKEN: set" || echo "TELEGRAM_BOT_TOKEN: EMPTY"
+            [ -n "$TELEGRAM_CHAT_ID" ] && echo "TELEGRAM_CHAT_ID: set" || echo "TELEGRAM_CHAT_ID: EMPTY"
             python3 watcher.py --test-notify
             exit 0
           fi

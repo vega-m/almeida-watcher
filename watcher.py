@@ -10,6 +10,7 @@ Exit codes: 0 = available tickets found (and notified), 1 = nothing found,
 2 = check failed (network/parse error).
 """
 import json
+import os
 import re
 import sys
 import time
