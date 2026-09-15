@@ -37,7 +37,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ALERT_STATE_FILE: ${{ github.workspace }}/alerted.json
         run: |
-          WATCH_STATE=$(gh workflow view watch.yml --json state -q .state 2>/dev/null || echo unknown)
+          WATCH_STATE=$(gh api repos/$GITHUB_REPOSITORY/actions/workflows/watch.yml --jq .state 2>/dev/null || echo unknown)
           export WATCH_STATE
           python3 watcher.py --heartbeat
 
@@ -45,7 +45,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          STATE=$(gh workflow view watch.yml --json state -q .state 2>/dev/null || echo unknown)
+          STATE=$(gh api repos/$GITHUB_REPOSITORY/actions/workflows/watch.yml --jq .state 2>/dev/null || echo unknown)
           echo "- $(date -u '+%F %H:%M') UTC beat, watch: $STATE" >> STATUS.md
           git config user.name "heartbeat-bot"
           git config user.email "actions@github.com"
