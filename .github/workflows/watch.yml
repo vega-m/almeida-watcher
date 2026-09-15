@@ -6,14 +6,8 @@ on:
     # coverage is continuous (each shift runs ~5h20m, next run waits its turn).
     - cron: "11 */3 * * *"
   workflow_dispatch:
-    inputs:
-      test_notify:
-        description: "Send a test Telegram message instead of watching"
-        type: boolean
-        default: false
 
 permissions:
-  actions: write # needed to disable this workflow after tickets are found
   contents: read
 
 concurrency:
@@ -27,24 +21,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Persist "already alerted" across shifts so a churning return that
+      # reappears doesn't re-ping every shift. Cooldown lives in watcher.py.
+      - uses: actions/cache@v4
+        with:
+          path: alerted.json
+          key: alerted-${{ github.run_id }}
+          restore-keys: |
+            alerted-
+
       - name: Watch for returns (~5h20m shift, one check per minute)
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          GH_TOKEN: ${{ github.token }}
+          ALERT_STATE_FILE: ${{ github.workspace }}/alerted.json
         run: |
-          if [ "${{ inputs.test_notify }}" = "true" ]; then
-            [ -n "$TELEGRAM_BOT_TOKEN" ] && echo "TELEGRAM_BOT_TOKEN: set" || echo "TELEGRAM_BOT_TOKEN: EMPTY"
-            [ -n "$TELEGRAM_CHAT_ID" ] && echo "TELEGRAM_CHAT_ID: set" || echo "TELEGRAM_CHAT_ID: EMPTY"
-            python3 watcher.py --test-notify
-            exit 0
-          fi
           for i in $(seq 1 320); do
             echo "--- check $i/320 ---"
-            if python3 watcher.py; then
-              echo "Tickets found and notification sent — disabling workflow."
-              gh workflow disable watch.yml || true
-              exit 0
-            fi
+            python3 watcher.py || true
             sleep 60
           done
