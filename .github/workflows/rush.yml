@@ -1,15 +1,25 @@
 name: rush
 
 on:
+  schedule:
+    # Fridays, two staggered triggers in UTC so GitHub scheduler jitter can't
+    # miss the pre-12:30pm-UK start. The script waits internally for the drop
+    # window (config-rush.json, UK time) and exits if the date isn't armed.
+    - cron: "40 10 * * 5"
+    - cron: "20 11 * * 5"
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: rush-watcher
+  cancel-in-progress: true
+
 jobs:
   rush:
     runs-on: ubuntu-latest
-    timeout-minutes: 95
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
       - name: Watch for Friday Rush links
